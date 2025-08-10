@@ -2,15 +2,16 @@
 import { seeded } from './util/seededRng.js';
 import { makeValueNoise2D } from './util/noise.js';
 
-export function expandRecipe(recipe) {
-  const out = [];
-  const rng = seeded(recipe.seed ?? 1234);
-  const noise = makeValueNoise2D(recipe.seed ?? 1234);
+export class SceneGenerator {
+  static expandRecipe(recipe) {
+    const out = [];
+    const rng = seeded(recipe.seed ?? 1234);
+    const noise = makeValueNoise2D(recipe.seed ?? 1234);
 
   const lerp = (a,b,t)=>a+(b-a)*t;
   const randRange = (a,b)=>lerp(a,b,rng());
 
-  for (const motif of recipe.motifs ?? []) {
+    for (const motif of recipe.motifs ?? []) {
     switch (motif.kind) {
       case 'ringInstances': {
         const { id, count, radius, y=0, jitterAngle=0, jitterRadius=0, align='outward', base } = motif;
@@ -51,17 +52,18 @@ export function expandRecipe(recipe) {
       default: console.warn('Unknown motif', motif.kind);
     }
   }
-  return out;
+    return out;
 
-  function atom(id, base, position=[0,0,0], rotation=[0,0,0], scale){
-    return {
-      id, type: 'mesh',
-      geometry: base.geometry,     // { kind, params? } or { url } for custom
-      material: base.material,     // { kind: 'standard'|'emissive'|..., color, ... }
-      transform: { position, rotation, scale: scale ?? (base.scale ?? [1,1,1]) },
-      lod: base.lod ?? { near: 0, far: 200, billboard: false },
-      tags: base.tags ?? []
-    };
+    function atom(id, base, position=[0,0,0], rotation=[0,0,0], scale){
+      return {
+        id, type: 'mesh',
+        geometry: base.geometry,     // { kind, params? } or { url } for custom
+        material: base.material,     // { kind: 'standard'|'emissive'|..., color, ... }
+        transform: { position, rotation, scale: scale ?? (base.scale ?? [1,1,1]) },
+        lod: base.lod ?? { near: 0, far: 200, billboard: false },
+        tags: base.tags ?? []
+      };
+    }
   }
 }
 

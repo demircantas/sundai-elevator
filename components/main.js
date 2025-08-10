@@ -1,148 +1,79 @@
-
-// Unlit shading toggle (default: true)
-let useUnlit = true;
-window.useUnlit = useUnlit;
-window.toggleUnlitShading = function() {
-    useUnlit = !useUnlit;
-    window.useUnlit = useUnlit;
-    updateAllMaterials(scene, useUnlit);
-};
-
-function updateAllMaterials(obj, unlit) {
-    obj.traverse(child => {
-        if (child.isMesh) {
-            const color = child.material.color ? child.material.color.getHex() : 0xffffff;
-            child.material = unlit
-                ? new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide })
-                : new THREE.MeshPhongMaterial({ color, side: THREE.DoubleSide });
-        }
-    });
-}
-
-// Wire up the button
-document.getElementById('toggle-shading').onclick = window.toggleUnlitShading;
-// Set initial mode to unlit
-window.addEventListener('DOMContentLoaded', () => {
-    updateAllMaterials(scene, useUnlit);
-});
-import { createCamera } from './Camera.js';
-import { createRenderer } from './Renderer.js';
-import { addLighting } from './Lighting.js';
-import { setupControls } from './Controls.js';
-import { createSceneFromRecipe } from '../ParametricObject.js';
-// import { createParametricObject } from '../ParametricObject.js';
+import { Camera } from './Camera.js';
+import { Renderer } from './Renderer.js';
+import { Lighting } from './Lighting.js';
+import { Controls } from './Controls.js';
+import { SceneFactory } from '../ParametricObject.js';
 import { elevatorRecipe } from '../recipes/elevator_recipe.js';
-import { interpolateRecipes, createInterpolatedScene } from './SceneInterpolator.js';
-
-// Import recipes
 import { grandCanyonRecipe } from '../recipes/grand_canyon_recipe.js';
 import { greatDomeMITRecipe } from '../recipes/great_dome_mit_recipe.js';
 
-// Scene
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x20232a);
+class ElevatorApp {
+    constructor() {
+        // Scene setup
+        this.scene = new THREE.Scene();
+        this.scene.background = new THREE.Color(0x20232a);
+        this.camera = new Camera();
+        this.renderer = new Renderer();
+        new Lighting(this.scene);
+        this.controls = new Controls(this.renderer, this.camera);
 
-// Camera
-const camera = createCamera();
+        // Shading toggle
+        this.useUnlit = true;
+        window.useUnlit = this.useUnlit;
+        window.toggleUnlitShading = () => this.toggleUnlitShading();
+        document.getElementById('toggle-shading').onclick = window.toggleUnlitShading;
+        window.addEventListener('DOMContentLoaded', () => {
+            this.updateAllMaterials(this.scene, this.useUnlit);
+        });
 
-// Renderer
-const renderer = createRenderer();
+        // Recipes and state
+        this.domeRecipe = greatDomeMITRecipe();
+        this.canyonRecipe = grandCanyonRecipe();
+        this.interpInstanced = [];
+        this.currentScene = 'dome';
+        this.elevator = null;
+        this.elevatorMesh = null;
+        this.elevatorTargetY = 20;
+        this.elevatorMoving = false;
+        this.elevatorDirection = 1;
+        this.playerInElevator = false;
 
-// Lighting
-addLighting(scene);
+        this.loadDomeScene();
+        document.addEventListener('keydown', e => this.onKeyDown(e));
 
-// Objects
-// scene.add(createGround());
-// scene.add(createCube());
-// scene.add(createSphere());
-// scene.add(createCylinder());
+        this.animate = this.animate.bind(this);
+        this.animate();
+    }
 
-// Load scene from recipe (choose one)
-// const canyon = createSceneFromRecipe(grandCanyonRecipe());
-// scene.add(canyon);
-// To use the MIT Dome scene, comment above and uncomment below:
-let currentScene = 'dome';
-let elevator, elevatorMesh, elevatorY = 0, elevatorTargetY = 20, elevatorMoving = false, elevatorDirection = 1;
-let dome, canyon, playerInElevator = false;
-let interpInstanced = [];
-const domeRecipe = greatDomeMITRecipe();
-const canyonRecipe = grandCanyonRecipe();
+    toggleUnlitShading() {
+        this.useUnlit = !this.useUnlit;
+        window.useUnlit = this.useUnlit;
+        this.updateAllMaterials(this.scene, this.useUnlit);
+    }
 
-function loadDomeScene() {
-    scene.clear();
-    // Use instanced geometry scene for MIT Dome
-    // Remove previous instanced references
-    interpInstanced = [];
-    // Create instanced geometry for MIT Dome and Canyon, keep references
-    function createInterpInstanced(recipeA, recipeB) {
-        // Both recipes must have the same structure for morphing
-        // We'll batch by type: box, sphere, cylinder
-        const types = ['box', 'sphere', 'cylinder'];
-        for (const type of types) {
-            const arrA = [];
-            const arrB = [];
-            function collect(objA, objB) {
-                if (objA.type === type && objB.type === type) {
-                    arrA.push(objA);
-                    arrB.push(objB);
-                }
-                if (objA.children && objB.children && objA.children.length === objB.children.length) {
-                    for (let i = 0; i < objA.children.length; ++i) {
-                        collect(objA.children[i], objB.children[i]);
-                    }
-                }
+    updateAllMaterials(obj, unlit) {
+        obj.traverse(child => {
+            if (child.isMesh) {
+                const color = child.material.color ? child.material.color.getHex() : 0xffffff;
+                child.material = unlit
+                    ? new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide })
+                    : new THREE.MeshPhongMaterial({ color, side: THREE.DoubleSide });
             }
-            collect(recipeA, recipeB);
-            if (arrA.length > 0) {
-                // Create instanced mesh
-                let geometry;
-                switch (type) {
-                    case 'box': geometry = new THREE.BoxGeometry(...(arrA[0].size || [1,1,1])); break;
-                    case 'sphere': geometry = new THREE.SphereGeometry((arrA[0].size||[1])[0], 32, 32); break;
-                    case 'cylinder': geometry = new THREE.CylinderGeometry(...(arrA[0].size||[1,1,1]), 32); break;
-                }
-                const unlit = (typeof window !== 'undefined' && window.useUnlit !== undefined) ? window.useUnlit : false;
-                const baseColor = arrA[0].color || 0xffffff;
-                const material = unlit
-                    ? new THREE.MeshBasicMaterial({ color: baseColor, side: THREE.DoubleSide })
-                    : new THREE.MeshPhongMaterial({ color: baseColor, side: THREE.DoubleSide });
-                const instanced = new THREE.InstancedMesh(geometry, material, arrA.length);
-                scene.add(instanced);
-                interpInstanced.push({ instanced, arrA, arrB });
-            }
-        }
-        // Add plane as a regular mesh (no morphing)
-        if (recipeA.type === 'plane' && recipeB.type === 'plane') {
-            let geometry = new THREE.PlaneGeometry(...(recipeA.size||[1,1]));
-            const unlit = (typeof window !== 'undefined' && window.useUnlit !== undefined) ? window.useUnlit : false;
-            const material = unlit
-                ? new THREE.MeshBasicMaterial({ color: recipeA.color || 0xffffff, side: THREE.DoubleSide })
-                : new THREE.MeshPhongMaterial({ color: recipeA.color || 0xffffff, side: THREE.DoubleSide });
-            const mesh = new THREE.Mesh(geometry, material);
-            mesh.position.set(...(recipeA.position||[0,0,0]));
-            mesh.rotation.set(...(recipeA.rotation||[0,0,0]));
-            mesh.scale.set(...(recipeA.scale||[1,1,1]));
-            scene.add(mesh);
+        });
+    }
+
+    onKeyDown(e) {
+        if (e.key.toLowerCase() === 'e' && !this.elevatorMoving && !this.playerInElevator) {
+            this.playerInElevator = true;
+            this.elevatorMoving = true;
+            this.elevatorDirection = (this.currentScene === 'dome') ? 1 : -1;
         }
     }
-    createInterpInstanced(domeRecipe, canyonRecipe);
-    // Elevator
-    elevator = createSceneFromRecipe(elevatorRecipe({ position: [0, 5, 10], height: 8, width: 4, depth: 4 }));
-    elevatorMesh = elevator;
-    scene.add(elevatorMesh);
-    camera.position.y = 5;
-    currentScene = 'dome';
-}
 
-function loadCanyonScene() {
-    scene.clear();
-    // Use instanced geometry scene for Grand Canyon
-    interpInstanced = [];
-    function createInterpInstanced(recipeA, recipeB) {
+    createInterpInstanced(recipeA, recipeB) {
         const types = ['box', 'sphere', 'cylinder'];
         for (const type of types) {
-            const arrA = [];
-            const arrB = [];
+            const arrA = [], arrB = [];
             function collect(objA, objB) {
                 if (objA.type === type && objB.type === type) {
                     arrA.push(objA);
@@ -168,8 +99,8 @@ function loadCanyonScene() {
                     ? new THREE.MeshBasicMaterial({ color: baseColor, side: THREE.DoubleSide })
                     : new THREE.MeshPhongMaterial({ color: baseColor, side: THREE.DoubleSide });
                 const instanced = new THREE.InstancedMesh(geometry, material, arrA.length);
-                scene.add(instanced);
-                interpInstanced.push({ instanced, arrA, arrB });
+                this.scene.add(instanced);
+                this.interpInstanced.push({ instanced, arrA, arrB });
             }
         }
         if (recipeA.type === 'plane' && recipeB.type === 'plane') {
@@ -182,121 +113,112 @@ function loadCanyonScene() {
             mesh.position.set(...(recipeA.position||[0,0,0]));
             mesh.rotation.set(...(recipeA.rotation||[0,0,0]));
             mesh.scale.set(...(recipeA.scale||[1,1,1]));
-            scene.add(mesh);
+            this.scene.add(mesh);
         }
     }
-    createInterpInstanced(domeRecipe, canyonRecipe);
-    // Elevator
-    elevator = createSceneFromRecipe(elevatorRecipe({ position: [0, 5, 10], height: 8, width: 4, depth: 4, color: 0x8844ff }));
-    elevatorMesh = elevator;
-    scene.add(elevatorMesh);
-    camera.position.y = 5;
-    currentScene = 'canyon';
-}
 
-// Start in MIT Dome
-loadDomeScene();
-
-// Listen for 'E' key to enter elevator and start moving
-document.addEventListener('keydown', (e) => {
-    if (e.key.toLowerCase() === 'e' && !elevatorMoving && !playerInElevator) {
-        playerInElevator = true;
-        elevatorMoving = true;
-        // Set direction based on current scene
-        elevatorDirection = (currentScene === 'dome') ? 1 : -1;
+    loadDomeScene() {
+        this.scene.clear();
+        this.interpInstanced = [];
+        this.createInterpInstanced(this.domeRecipe, this.canyonRecipe);
+        this.elevator = SceneFactory.createFromRecipe(
+            elevatorRecipe({ position: [0, 5, 10], height: 8, width: 4, depth: 4 })
+        );
+        this.elevatorMesh = this.elevator;
+        this.scene.add(this.elevatorMesh);
+        this.camera.position.y = 5;
+        this.currentScene = 'dome';
     }
-});
 
-// Controls
-const updateMovement = setupControls(renderer, camera);
+    loadCanyonScene() {
+        this.scene.clear();
+        this.interpInstanced = [];
+        this.createInterpInstanced(this.domeRecipe, this.canyonRecipe);
+        this.elevator = SceneFactory.createFromRecipe(
+            elevatorRecipe({ position: [0, 5, 10], height: 8, width: 4, depth: 4, color: 0x8844ff })
+        );
+        this.elevatorMesh = this.elevator;
+        this.scene.add(this.elevatorMesh);
+        this.camera.position.y = 5;
+        this.currentScene = 'canyon';
+    }
 
-// Animation loop
-
-
-
-function animate() {
-    requestAnimationFrame(animate);
-    let t = (elevatorMesh.position.y - 5) / (elevatorTargetY - 5);
-    t = Math.max(0, Math.min(1, t));
-    if (elevatorMoving && playerInElevator) {
-        // Move elevator and player up or down
-        let arrived = false;
-        if (elevatorDirection === 1 && elevatorMesh.position.y < elevatorTargetY) {
-            elevatorMesh.position.y += 0.1;
-            if (elevatorMesh.position.y >= elevatorTargetY) {
-                elevatorMesh.position.y = elevatorTargetY;
-                arrived = true;
-            }
-            camera.position.y = elevatorMesh.position.y;
-        } else if (elevatorDirection === -1 && elevatorMesh.position.y > 5) {
-            elevatorMesh.position.y -= 0.1;
-            if (elevatorMesh.position.y <= 5) {
-                elevatorMesh.position.y = 5;
-                arrived = true;
-            }
-            camera.position.y = elevatorMesh.position.y;
-        } else {
-            arrived = true;
-        }
-        // Interpolate all instanced meshes
-        for (const { instanced, arrA, arrB } of interpInstanced) {
-            const color = new THREE.Color();
-            for (let i = 0; i < arrA.length; ++i) {
-                const objA = arrA[i], objB = arrB[i];
-                // Interpolate transform
-                const pos = objA.position.map((a, j) => a + (objB.position[j] - a) * t);
-                const rot = objA.rotation.map((a, j) => a + (objB.rotation[j] - a) * t);
-                const scl = objA.scale.map((a, j) => a + (objB.scale[j] - a) * t);
-                const m = new THREE.Matrix4();
-                m.compose(
-                    new THREE.Vector3(...pos),
-                    new THREE.Quaternion().setFromEuler(new THREE.Euler(...rot)),
-                    new THREE.Vector3(...scl)
-                );
-                instanced.setMatrixAt(i, m);
-                // Interpolate color
-                color.set(objA.color);
-                color.lerp(new THREE.Color(objB.color), t);
-                instanced.setColorAt(i, color);
-            }
-            instanced.instanceMatrix.needsUpdate = true;
-            if (instanced.instanceColor) instanced.instanceColor.needsUpdate = true;
-        }
-        if (arrived) {
-            elevatorMoving = false;
-            playerInElevator = false;
-            if (elevatorDirection === 1) {
-                currentScene = 'canyon';
+    animate() {
+        requestAnimationFrame(this.animate);
+        let t = (this.elevatorMesh.position.y - 5) / (this.elevatorTargetY - 5);
+        t = Math.max(0, Math.min(1, t));
+        if (this.elevatorMoving && this.playerInElevator) {
+            let arrived = false;
+            if (this.elevatorDirection === 1 && this.elevatorMesh.position.y < this.elevatorTargetY) {
+                this.elevatorMesh.position.y += 0.1;
+                if (this.elevatorMesh.position.y >= this.elevatorTargetY) {
+                    this.elevatorMesh.position.y = this.elevatorTargetY;
+                    arrived = true;
+                }
+                this.camera.position.y = this.elevatorMesh.position.y;
+            } else if (this.elevatorDirection === -1 && this.elevatorMesh.position.y > 5) {
+                this.elevatorMesh.position.y -= 0.1;
+                if (this.elevatorMesh.position.y <= 5) {
+                    this.elevatorMesh.position.y = 5;
+                    arrived = true;
+                }
+                this.camera.position.y = this.elevatorMesh.position.y;
             } else {
-                currentScene = 'dome';
+                arrived = true;
             }
-        }
-    } else {
-        updateMovement();
-        // Snap to correct state
-        let snapT = (currentScene === 'dome') ? 0 : 1;
-        for (const { instanced, arrA, arrB } of interpInstanced) {
             const color = new THREE.Color();
-            for (let i = 0; i < arrA.length; ++i) {
-                const objA = arrA[i], objB = arrB[i];
-                const pos = objA.position.map((a, j) => a + (objB.position[j] - a) * snapT);
-                const rot = objA.rotation.map((a, j) => a + (objB.rotation[j] - a) * snapT);
-                const scl = objA.scale.map((a, j) => a + (objB.scale[j] - a) * snapT);
-                const m = new THREE.Matrix4();
-                m.compose(
-                    new THREE.Vector3(...pos),
-                    new THREE.Quaternion().setFromEuler(new THREE.Euler(...rot)),
-                    new THREE.Vector3(...scl)
-                );
-                instanced.setMatrixAt(i, m);
-                color.set(objA.color);
-                color.lerp(new THREE.Color(objB.color), snapT);
-                instanced.setColorAt(i, color);
+            for (const { instanced, arrA, arrB } of this.interpInstanced) {
+                for (let i = 0; i < arrA.length; ++i) {
+                    const objA = arrA[i], objB = arrB[i];
+                    const pos = objA.position.map((a, j) => a + (objB.position[j] - a) * t);
+                    const rot = objA.rotation.map((a, j) => a + (objB.rotation[j] - a) * t);
+                    const scl = objA.scale.map((a, j) => a + (objB.scale[j] - a) * t);
+                    const m = new THREE.Matrix4();
+                    m.compose(
+                        new THREE.Vector3(...pos),
+                        new THREE.Quaternion().setFromEuler(new THREE.Euler(...rot)),
+                        new THREE.Vector3(...scl)
+                    );
+                    instanced.setMatrixAt(i, m);
+                    color.set(objA.color);
+                    color.lerp(new THREE.Color(objB.color), t);
+                    instanced.setColorAt(i, color);
+                }
+                instanced.instanceMatrix.needsUpdate = true;
+                if (instanced.instanceColor) instanced.instanceColor.needsUpdate = true;
             }
-            instanced.instanceMatrix.needsUpdate = true;
-            if (instanced.instanceColor) instanced.instanceColor.needsUpdate = true;
+            if (arrived) {
+                this.elevatorMoving = false;
+                this.playerInElevator = false;
+                this.currentScene = (this.elevatorDirection === 1) ? 'canyon' : 'dome';
+            }
+        } else {
+            this.controls.update();
+            let snapT = (this.currentScene === 'dome') ? 0 : 1;
+            const color = new THREE.Color();
+            for (const { instanced, arrA, arrB } of this.interpInstanced) {
+                for (let i = 0; i < arrA.length; ++i) {
+                    const objA = arrA[i], objB = arrB[i];
+                    const pos = objA.position.map((a, j) => a + (objB.position[j] - a) * snapT);
+                    const rot = objA.rotation.map((a, j) => a + (objB.rotation[j] - a) * snapT);
+                    const scl = objA.scale.map((a, j) => a + (objB.scale[j] - a) * snapT);
+                    const m = new THREE.Matrix4();
+                    m.compose(
+                        new THREE.Vector3(...pos),
+                        new THREE.Quaternion().setFromEuler(new THREE.Euler(...rot)),
+                        new THREE.Vector3(...scl)
+                    );
+                    instanced.setMatrixAt(i, m);
+                    color.set(objA.color);
+                    color.lerp(new THREE.Color(objB.color), snapT);
+                    instanced.setColorAt(i, color);
+                }
+                instanced.instanceMatrix.needsUpdate = true;
+                if (instanced.instanceColor) instanced.instanceColor.needsUpdate = true;
+            }
         }
+        this.renderer.render(this.scene, this.camera);
     }
-    renderer.render(scene, camera);
 }
-animate();
+
+new ElevatorApp();
