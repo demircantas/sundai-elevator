@@ -27,11 +27,13 @@ export function interpolateRecipes(recipeA, recipeB, t) {
     const size = lerpArray(objA.size, objB.size, t);
     const position = lerpArray(objA.position, objB.position, t);
     const color = lerpColor(objA.color, objB.color, t);
+    const rotation = lerpArray(objA.rotation || [0,0,0], objB.rotation || [0,0,0], t);
+    const scale = lerpArray(objA.scale || [1,1,1], objB.scale || [1,1,1], t);
     let children = [];
     if (objA.children && objB.children && objA.children.length === objB.children.length) {
       children = objA.children.map((childA, i) => interpObj(childA, objB.children[i]));
     }
-    return { type, size, position, color, children };
+    return { type, size, position, color, rotation, scale, children };
   }
   return interpObj(recipeA, recipeB);
 }

@@ -1,4 +1,4 @@
-export function createParametricObject({ type, size = [1, 1, 1], position = [0, 0, 0], color = 0xffffff, children = [] }) {
+export function createParametricObject({ type, size = [1, 1, 1], position = [0, 0, 0], color = 0xffffff, rotation = [0,0,0], scale = [1,1,1], children = [] }) {
     let geometry, material, mesh;
     // Use global toggle if available
     const unlit = (typeof window !== 'undefined' && window.useUnlit !== undefined) ? window.useUnlit : false;
@@ -23,6 +23,8 @@ export function createParametricObject({ type, size = [1, 1, 1], position = [0, 
     }
     mesh = new THREE.Mesh(geometry, material);
     mesh.position.set(...position);
+    mesh.rotation.set(...rotation);
+    mesh.scale.set(...scale);
     // Recursively add children
     for (const child of children) {
         mesh.add(createParametricObject(child));
