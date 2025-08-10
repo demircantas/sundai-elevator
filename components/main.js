@@ -2,7 +2,7 @@ import { Camera } from './Camera.js';
 import { Renderer } from './Renderer.js';
 import { Lighting } from './Lighting.js';
 import { Controls } from './Controls.js';
-import { SceneFactory } from '../ParametricObject.js';
+import { createSceneFromRecipe } from '../sceneFactory.js';
 import { elevatorRecipe } from '../recipes/elevator_recipe.js';
 import { grandCanyonRecipe } from '../recipes/grand_canyon_recipe.js';
 import { greatDomeMITRecipe } from '../recipes/great_dome_mit_recipe.js';
@@ -153,7 +153,7 @@ class ElevatorApp {
         this.scene.clear();
         this.interpInstanced = [];
         this.createInterpInstanced(this.domeRecipe, this.canyonRecipe);
-        this.elevator = SceneFactory.createFromRecipe(
+        this.elevator = createSceneFromRecipe(
             elevatorRecipe({ position: [0, 5, 10], height: 8, width: 4, depth: 4 })
         );
         this.elevatorMesh = this.elevator;
@@ -171,7 +171,7 @@ class ElevatorApp {
         this.scene.clear();
         this.interpInstanced = [];
         this.createInterpInstanced(this.domeRecipe, this.canyonRecipe);
-        this.elevator = SceneFactory.createFromRecipe(
+        this.elevator = createSceneFromRecipe(
             elevatorRecipe({ position: [0, 5, 10], height: 8, width: 4, depth: 4, color: 0x8844ff })
         );
         this.elevatorMesh = this.elevator;
