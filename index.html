@@ -10,7 +10,7 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.153.0/build/three.min.js"></script>
 <script type="module" src="components/main.js"></script>
 <script type="module">
-  import { expandRecipe } from './src/SceneGenerator.js';
+  import { SceneGenerator } from './src/SceneGenerator.js';
   import domeRecipe from './scenes/great_dome_recipe.js';
   import canyonRecipe from './scenes/grand_canyon_recipe.js';
   // If you prefer JSON instead of JS modules for recipes, you can import with fetch + JSON.parse.
@@ -28,7 +28,7 @@
     if (Array.isArray(data)) {
       flat = data;
     } else if (data && Array.isArray(data.motifs)) {
-      flat = expandRecipe(data);
+      flat = SceneGenerator.expandRecipe(data);
     } else if (data && Array.isArray(data.objects)) {
       flat = data.objects;
     } else {

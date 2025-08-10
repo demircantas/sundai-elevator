@@ -1,6 +1,7 @@
-export function createRenderer() {
-    const renderer = new THREE.WebGLRenderer({antialias: true});
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    document.body.appendChild(renderer.domElement);
-    return renderer;
+export class Renderer extends THREE.WebGLRenderer {
+    constructor() {
+        super({ antialias: true });
+        this.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(this.domElement);
+    }
 }
