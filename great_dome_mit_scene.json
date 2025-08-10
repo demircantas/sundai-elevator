@@ -1,0 +1,25 @@
+{
+  "type": "plane",
+  "size": [120, 120],
+  "position": [0, 0, 0],
+  "color": 8947848,
+  "children": [
+    { "type": "sphere", "size": [18], "position": [0, 18, 0], "color": 16777215 },
+    { "type": "cylinder", "size": [18, 18, 4], "position": [0, 2, 0], "color": 16777215 },
+    { "type": "box", "size": [60, 10, 30], "position": [0, 5, -20], "color": 16777215 },
+
+    // Steps (20 boxes)
+    
+    // Columns (24 cylinders)
+    
+    // Windows (30 boxes)
+    
+    // Trees (20 cylinders + 20 spheres)
+    
+    // Additional details to reach ~200 geometries
+    
+    // --- BEGIN GENERATED GEOMETRIES ---
+
+    
+  ]
+}

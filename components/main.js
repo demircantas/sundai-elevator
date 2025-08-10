@@ -3,6 +3,7 @@ import { createRenderer } from './Renderer.js';
 import { addLighting } from './Lighting.js';
 import { setupControls } from './Controls.js';
 import { createGround, createCube, createSphere, createCylinder } from '../SceneObjects.js';
+import { createSceneFromJSON } from '../ParametricObject.js';
 
 // Scene
 const scene = new THREE.Scene();
@@ -18,10 +19,18 @@ const renderer = createRenderer();
 addLighting(scene);
 
 // Objects
-scene.add(createGround());
-scene.add(createCube());
-scene.add(createSphere());
-scene.add(createCylinder());
+// scene.add(createGround());
+// scene.add(createCube());
+// scene.add(createSphere());
+// scene.add(createCylinder());
+
+// Load cartoon scene from JSON (Grand Canyon example)
+fetch('../grand_canyon_scene.json')
+    .then(response => response.json())
+    .then(data => {
+        const canyon = createSceneFromJSON(data);
+        scene.add(canyon);
+    });
 
 // Controls
 const updateMovement = setupControls(renderer, camera);
