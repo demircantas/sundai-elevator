@@ -22,7 +22,7 @@ export function greatDomeMITRecipe() {
     ];
     return {
         type: 'plane',
-        size: [30, 30],
+        size: [3, 3],
         position: [0, 0, 0],
         color: 0x888888,
         children

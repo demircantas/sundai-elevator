@@ -4,10 +4,10 @@ export function grandCanyonRecipe() {
     const children = [
         { type: 'sphere', size: [5], position: [0, 8, 0], color: 0xC97E4B, rotation: [0, 0, 0.5], scale: [1.2, 0.8, 1] },
         { type: 'cylinder', size: [5, 5, 2], position: [0, 2, 0], color: 0xC97E4B, rotation: [0, 0.5, 0], scale: [1, 1.2, 1] },
-        { type: 'box', size: [12, 4, 8], position: [0, 2, -6], color: 0xE2B07A, rotation: [0.2, 0, 0], scale: [1, 1, 1.2] },
+        { type: 'box', size: [12, 4, 32], position: [0, 2, -6], color: 0xE2B07A, rotation: [0.2, 0, 0], scale: [1, 1, 1.2] },
         { type: 'box', size: [12, 0.5, 2], position: [0, 0.25, -10], color: 0x3399FF, rotation: [0, 0, 0], scale: [1, 1, 1] },
         { type: 'cylinder', size: [0.4, 0.4, 4], position: [-4, 2, -6], color: 0xA0522D, rotation: [0, 0, 0.3], scale: [1, 1, 1] },
-        { type: 'cylinder', size: [0.4, 0.4, 4], position: [0, 2, -6], color: 0xA0522D, rotation: [0.2, 0, 0], scale: [1, 1, 1] },
+        { type: 'cylinder', size: [0.4, 5.4, 4], position: [0, 2, -6], color: 0xA0522D, rotation: [0.2, 0, 0], scale: [1, 1, 1] },
         { type: 'cylinder', size: [0.4, 0.4, 4], position: [4, 2, -6], color: 0xA0522D, rotation: [0, 0, 0], scale: [1.2, 1, 1] },
         { type: 'box', size: [2, 2, 2], position: [8, 1, 8], color: 0xC97E4B, rotation: [0, 0, 0.7], scale: [1, 1, 1] },
         { type: 'sphere', size: [1], position: [5, 1, 5], color: 0xA0522D, rotation: [0, 0, 0], scale: [1, 1.3, 1] },
@@ -22,7 +22,7 @@ export function grandCanyonRecipe() {
     ];
     return {
         type: 'plane',
-        size: [30, 30],
+        size: [3, 3],
         position: [0, 0, 0],
         color: 0xE2B07A,
         children
