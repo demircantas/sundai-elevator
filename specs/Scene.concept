@@ -1,0 +1,23 @@
+concept Scene
+
+purpose
+    to represent a 3D environment with a set of objects and their properties
+
+state
+    a set of Objects with
+        a type String
+        a size Array
+        a position Array
+        a rotation Array
+        a scale Array
+        a color Number
+        a parent String (optional)
+        a children Array (optional)
+    a background Number
+    a lighting Array
+
+actions
+    load (scene: Scene, objects: Array) : (scene: Scene)
+    update (scene: Scene, objects: Array) : (scene: Scene)
+    reset (scene: Scene) : (scene: Scene)
+    interpolate (sceneA: Scene, sceneB: Scene, t: Number) : (scene: Scene)

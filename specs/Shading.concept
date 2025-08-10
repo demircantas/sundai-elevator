@@ -1,0 +1,13 @@
+concept Shading
+
+purpose
+    to manage the shading mode (unlit/lit) and update materials accordingly
+
+state
+    a shadingMode String
+    a materialProps Object
+
+actions
+    toggle (shading: Shading) : (shading: Shading)
+    setMode (shading: Shading, mode: String) : (shading: Shading)
+    updateMaterials (shading: Shading, props: Object) : (shading: Shading)

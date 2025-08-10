@@ -1,0 +1,15 @@
+concept Interpolation
+
+purpose
+    to handle smooth transitions between two scenes or object states
+
+state
+    a t Number
+    a source Object
+    a target Object
+
+actions
+    interpolate (source: Object, target: Object, t: Number) : (object: Object)
+    setT (interpolation: Interpolation, t: Number) : (interpolation: Interpolation)
+    start (interpolation: Interpolation) : (interpolation: Interpolation)
+    stop (interpolation: Interpolation) : (interpolation: Interpolation)

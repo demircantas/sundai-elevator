@@ -6,16 +6,47 @@ import { SceneFactory } from '../ParametricObject.js';
 import { elevatorRecipe } from '../recipes/elevator_recipe.js';
 import { grandCanyonRecipe } from '../recipes/grand_canyon_recipe.js';
 import { greatDomeMITRecipe } from '../recipes/great_dome_mit_recipe.js';
+// Concept and sync imports
+import { SceneConcept } from '../concepts/SceneConcept.js';
+import { ObjectConcept } from '../concepts/ObjectConcept.js';
+import { ElevatorConcept } from '../concepts/ElevatorConcept.js';
+import { PlayerConcept } from '../concepts/PlayerConcept.js';
+import { InterpolationConcept } from '../concepts/InterpolationConcept.js';
+import { ShadingConcept } from '../concepts/ShadingConcept.js';
+import { LightingConcept } from '../concepts/LightingConcept.js';
+import { ControlsConcept } from '../concepts/ControlsConcept.js';
+import { RecipeConcept } from '../concepts/RecipeConcept.js';
+import { SceneObjectSync } from '../syncs/SceneObjectSync.js';
+import { ElevatorPlayerSync } from '../syncs/ElevatorPlayerSync.js';
+import { SceneInterpolationSync } from '../syncs/SceneInterpolationSync.js';
+import { LightingShadingSync } from '../syncs/LightingShadingSync.js';
+import { ControlsPlayerSync } from '../syncs/ControlsPlayerSync.js';
 
 class ElevatorApp {
     constructor() {
         // Scene setup
-        this.scene = new THREE.Scene();
-        this.scene.background = new THREE.Color(0x20232a);
-        this.camera = new Camera();
-        this.renderer = new Renderer();
-        new Lighting(this.scene);
-        this.controls = new Controls(this.renderer, this.camera);
+    this.scene = new THREE.Scene();
+    this.scene.background = new THREE.Color(0x20232a);
+    this.camera = new Camera();
+    this.renderer = new Renderer();
+    new Lighting(this.scene);
+    this.controls = new Controls(this.renderer, this.camera);
+    // Concept instances
+    this.sceneConcept = new SceneConcept();
+    this.objectConcept = new ObjectConcept({});
+    this.elevatorConcept = new ElevatorConcept();
+    this.playerConcept = new PlayerConcept();
+    this.interpolationConcept = new InterpolationConcept();
+    this.shadingConcept = new ShadingConcept();
+    this.lightingConcept = new LightingConcept();
+    this.controlsConcept = new ControlsConcept();
+    this.recipeConcept = new RecipeConcept();
+    // Syncs
+    this.sceneObjectSync = new SceneObjectSync(this.sceneConcept, this.objectConcept);
+    this.elevatorPlayerSync = new ElevatorPlayerSync(this.elevatorConcept, this.playerConcept);
+    this.sceneInterpolationSync = new SceneInterpolationSync(this.sceneConcept, this.interpolationConcept);
+    this.lightingShadingSync = new LightingShadingSync(this.lightingConcept, this.shadingConcept);
+    this.controlsPlayerSync = new ControlsPlayerSync(this.controlsConcept, this.playerConcept);
 
         // Shading toggle
         this.useUnlit = true;
@@ -27,27 +58,28 @@ class ElevatorApp {
         });
 
         // Recipes and state
-        this.domeRecipe = greatDomeMITRecipe();
-        this.canyonRecipe = grandCanyonRecipe();
-        this.interpInstanced = [];
-        this.currentScene = 'dome';
-        this.elevator = null;
-        this.elevatorMesh = null;
-        this.elevatorTargetY = 20;
-        this.elevatorMoving = false;
-        this.elevatorDirection = 1;
-        this.playerInElevator = false;
+    this.domeRecipe = greatDomeMITRecipe();
+    this.canyonRecipe = grandCanyonRecipe();
+    this.interpInstanced = [];
+    this.currentScene = 'dome';
+    this.elevator = null;
+    this.elevatorMesh = null;
+    this.elevatorTargetY = 20;
+    this.elevatorMoving = false;
+    this.elevatorDirection = 1;
+    this.playerInElevator = false;
 
-        this.loadDomeScene();
-        document.addEventListener('keydown', e => this.onKeyDown(e));
+    this.loadDomeScene();
+    document.addEventListener('keydown', e => this.onKeyDown(e));
 
-        this.animate = this.animate.bind(this);
-        this.animate();
+    this.animate = this.animate.bind(this);
+    this.animate();
     }
 
     toggleUnlitShading() {
         this.useUnlit = !this.useUnlit;
         window.useUnlit = this.useUnlit;
+        this.shadingConcept.toggle();
         this.updateAllMaterials(this.scene, this.useUnlit);
     }
 
@@ -64,7 +96,7 @@ class ElevatorApp {
 
     onKeyDown(e) {
         if (e.key.toLowerCase() === 'e' && !this.elevatorMoving && !this.playerInElevator) {
-            this.playerInElevator = true;
+            this.elevatorPlayerSync.playerEntersElevator();
             this.elevatorMoving = true;
             this.elevatorDirection = (this.currentScene === 'dome') ? 1 : -1;
         }
@@ -128,6 +160,11 @@ class ElevatorApp {
         this.scene.add(this.elevatorMesh);
         this.camera.position.y = 5;
         this.currentScene = 'dome';
+        this.elevatorConcept.position = 5;
+        this.elevatorConcept.targetPosition = 20;
+        this.elevatorConcept.direction = 1;
+        this.elevatorConcept.moving = false;
+        this.elevatorConcept.playerInElevator = false;
     }
 
     loadCanyonScene() {
@@ -141,13 +178,18 @@ class ElevatorApp {
         this.scene.add(this.elevatorMesh);
         this.camera.position.y = 5;
         this.currentScene = 'canyon';
+        this.elevatorConcept.position = 20;
+        this.elevatorConcept.targetPosition = 5;
+        this.elevatorConcept.direction = -1;
+        this.elevatorConcept.moving = false;
+        this.elevatorConcept.playerInElevator = false;
     }
 
     animate() {
         requestAnimationFrame(this.animate);
         let t = (this.elevatorMesh.position.y - 5) / (this.elevatorTargetY - 5);
         t = Math.max(0, Math.min(1, t));
-        if (this.elevatorMoving && this.playerInElevator) {
+        if (this.elevatorMoving && this.elevatorConcept.playerInElevator) {
             let arrived = false;
             if (this.elevatorDirection === 1 && this.elevatorMesh.position.y < this.elevatorTargetY) {
                 this.elevatorMesh.position.y += 0.1;
@@ -189,7 +231,7 @@ class ElevatorApp {
             }
             if (arrived) {
                 this.elevatorMoving = false;
-                this.playerInElevator = false;
+                this.elevatorPlayerSync.playerExitsElevator();
                 this.currentScene = (this.elevatorDirection === 1) ? 'canyon' : 'dome';
             }
         } else {

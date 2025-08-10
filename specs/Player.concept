@@ -1,0 +1,15 @@
+concept Player
+
+purpose
+    to represent the user/player in the scene, including camera position and controls
+
+state
+    a position Array
+    a camera Object
+    a controls Object
+
+actions
+    move (player: Player, position: Array) : (player: Player)
+    enterElevator (player: Player) : (player: Player)
+    exitElevator (player: Player) : (player: Player)
+    setPosition (player: Player, position: Array) : (player: Player)

@@ -1,0 +1,12 @@
+concept Synchronization
+
+purpose
+    to declaratively synchronize actions between concepts
+
+state
+    a synchronizations Array
+
+actions
+    register (sync: Synchronization, rule: Object) : (sync: Synchronization)
+    trigger (sync: Synchronization, action: Object) : (sync: Synchronization)
+    update (sync: Synchronization, rule: Object) : (sync: Synchronization)

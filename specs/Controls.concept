@@ -1,0 +1,15 @@
+concept Controls
+
+purpose
+    to handle user input and camera controls
+
+state
+    a mode String
+    a enabled Boolean
+    a params Object
+
+actions
+    enable (controls: Controls) : (controls: Controls)
+    disable (controls: Controls) : (controls: Controls)
+    update (controls: Controls, params: Object) : (controls: Controls)
+    setMode (controls: Controls, mode: String) : (controls: Controls)

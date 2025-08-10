@@ -1,0 +1,18 @@
+concept Elevator
+
+purpose
+    to represent the elevator and its state, including position, direction, and movement
+
+state
+    a position Number
+    a targetPosition Number
+    a direction Number
+    a moving Boolean
+    a playerInElevator Boolean
+
+actions
+    move (elevator: Elevator, target: Number) : (elevator: Elevator)
+    start (elevator: Elevator) : (elevator: Elevator)
+    stop (elevator: Elevator) : (elevator: Elevator)
+    setTarget (elevator: Elevator, target: Number) : (elevator: Elevator)
+    setDirection (elevator: Elevator, direction: Number) : (elevator: Elevator)

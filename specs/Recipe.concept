@@ -1,0 +1,14 @@
+concept Recipe
+
+purpose
+    to encapsulate a scene or object configuration as a reusable recipe
+
+state
+    a objects Array
+    a params Object
+
+actions
+    load (recipe: Recipe, data: Object) : (recipe: Recipe)
+    save (recipe: Recipe) : (data: Object)
+    update (recipe: Recipe, data: Object) : (recipe: Recipe)
+    interpolate (recipeA: Recipe, recipeB: Recipe, t: Number) : (recipe: Recipe)

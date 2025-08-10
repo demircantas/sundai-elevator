@@ -1,0 +1,20 @@
+concept Object
+
+purpose
+    to represent a single 3D object and its properties
+
+state
+    a type String
+    a size Array
+    a position Array
+    a rotation Array
+    a scale Array
+    a color Number
+    a parent String (optional)
+    a children Array (optional)
+
+actions
+    create (object: Object) : (object: Object)
+    update (object: Object, props: Object) : (object: Object)
+    delete (object: Object) : (object: Object)
+    interpolate (objectA: Object, objectB: Object, t: Number) : (object: Object)

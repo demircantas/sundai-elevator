@@ -1,0 +1,12 @@
+concept Lighting
+
+purpose
+    to manage scene lighting (ambient, hemisphere, etc.)
+
+state
+    a lights Array
+
+actions
+    addLight (lighting: Lighting, light: Object) : (lighting: Lighting)
+    updateLight (lighting: Lighting, light: Object) : (lighting: Lighting)
+    removeLight (lighting: Lighting, light: Object) : (lighting: Lighting)
