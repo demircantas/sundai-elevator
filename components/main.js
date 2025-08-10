@@ -31,6 +31,7 @@ import { addLighting } from './Lighting.js';
 import { setupControls } from './Controls.js';
 import { createSceneFromRecipe } from '../ParametricObject.js';
 import { elevatorRecipe } from '../recipes/elevator_recipe.js';
+import { interpolateRecipes, createInterpolatedScene } from './SceneInterpolator.js';
 
 // Import recipes
 import { grandCanyonRecipe } from '../recipes/grand_canyon_recipe.js';
@@ -62,27 +63,34 @@ addLighting(scene);
 let currentScene = 'dome';
 let elevator, elevatorMesh, elevatorY = 0, elevatorTargetY = 20, elevatorMoving = false, elevatorDirection = 1;
 let dome, canyon, playerInElevator = false;
+let interpScene = null;
+const domeRecipe = greatDomeMITRecipe();
+const canyonRecipe = grandCanyonRecipe();
 
 function loadDomeScene() {
     scene.clear();
-    dome = createSceneFromRecipe(greatDomeMITRecipe());
+    dome = createSceneFromRecipe(domeRecipe);
     scene.add(dome);
     elevator = createSceneFromRecipe(elevatorRecipe({ position: [0, 5, 10], height: 8, width: 4, depth: 4 }));
     elevatorMesh = elevator;
     scene.add(elevatorMesh);
-    camera.position.set(0, 5, 10);
+    // Only update camera Y to elevator Y, keep X/Z
+    camera.position.y = 5;
     currentScene = 'dome';
+    interpScene = null;
 }
 
 function loadCanyonScene() {
     scene.clear();
-    canyon = createSceneFromRecipe(grandCanyonRecipe());
+    canyon = createSceneFromRecipe(canyonRecipe);
     scene.add(canyon);
     elevator = createSceneFromRecipe(elevatorRecipe({ position: [0, 5, 10], height: 8, width: 4, depth: 4, color: 0x8844ff }));
     elevatorMesh = elevator;
     scene.add(elevatorMesh);
-    camera.position.set(0, 5, 10);
+    // Only update camera Y to elevator Y, keep X/Z
+    camera.position.y = 5;
     currentScene = 'canyon';
+    interpScene = null;
 }
 
 // Start in MIT Dome
@@ -91,16 +99,10 @@ loadDomeScene();
 // Listen for 'E' key to enter elevator and start moving
 document.addEventListener('keydown', (e) => {
     if (e.key.toLowerCase() === 'e' && !elevatorMoving && !playerInElevator) {
-        // Check if player is close to elevator (simple distance check)
-        const dx = camera.position.x - elevatorMesh.position.x;
-        const dz = camera.position.z - elevatorMesh.position.z;
-        const dist = Math.sqrt(dx*dx + dz*dz);
-        if (dist < 4) {
-            playerInElevator = true;
-            elevatorMoving = true;
-            // Set direction based on current scene
-            elevatorDirection = (currentScene === 'dome') ? 1 : -1;
-        }
+        playerInElevator = true;
+        elevatorMoving = true;
+        // Set direction based on current scene
+        elevatorDirection = (currentScene === 'dome') ? 1 : -1;
     }
 });
 
@@ -110,30 +112,49 @@ const updateMovement = setupControls(renderer, camera);
 // Animation loop
 
 
+
 function animate() {
     requestAnimationFrame(animate);
+    let t = 0;
     if (elevatorMoving && playerInElevator) {
         // Move elevator and player up or down
         if (elevatorDirection === 1 && elevatorMesh.position.y < elevatorTargetY) {
             elevatorMesh.position.y += 0.1;
-            camera.position.y += 0.1;
+            camera.position.y = elevatorMesh.position.y;
         } else if (elevatorDirection === -1 && elevatorMesh.position.y > 5) {
             elevatorMesh.position.y -= 0.1;
-            camera.position.y -= 0.1;
+            camera.position.y = elevatorMesh.position.y;
         } else {
             // Arrived at destination
             elevatorMoving = false;
             playerInElevator = false;
             if (elevatorDirection === 1 && currentScene === 'dome') {
-                // Switch to Grand Canyon
                 loadCanyonScene();
             } else if (elevatorDirection === -1 && currentScene === 'canyon') {
-                // Switch to MIT Dome
                 loadDomeScene();
             }
         }
+        // Interpolate scenes while elevator is moving
+        t = (elevatorMesh.position.y - 5) / (elevatorTargetY - 5);
+        if (elevatorDirection === -1) t = 1 - t;
+        // Clamp t
+        t = Math.max(0, Math.min(1, t));
+        // Remove previous interpScene
+        if (interpScene) scene.remove(interpScene);
+        interpScene = createInterpolatedScene(domeRecipe, canyonRecipe, t);
+        scene.add(interpScene);
+        // Hide dome/canyon base scenes during interpolation
+        if (dome) scene.remove(dome);
+        if (canyon) scene.remove(canyon);
     } else {
         updateMovement();
+        // Ensure only the current scene is visible
+        if (interpScene) {
+            scene.remove(interpScene);
+            interpScene = null;
+        }
+        if (currentScene === 'dome' && dome && !scene.children.includes(dome)) scene.add(dome);
+        if (currentScene === 'canyon' && canyon && !scene.children.includes(canyon)) scene.add(canyon);
     }
     renderer.render(scene, camera);
 }
