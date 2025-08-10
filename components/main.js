@@ -28,11 +28,11 @@ addLighting(scene);
 // scene.add(createCylinder());
 
 // Load scene from recipe (choose one)
-const canyon = createSceneFromRecipe(greatDomeMITRecipe());
-scene.add(canyon);
+// const canyon = createSceneFromRecipe(grandCanyonRecipe());
+// scene.add(canyon);
 // To use the MIT Dome scene, comment above and uncomment below:
-// const dome = createSceneFromRecipe(greatDomeMITRecipe());
-// scene.add(dome);
+const dome = createSceneFromRecipe(greatDomeMITRecipe());
+scene.add(dome);
 
 // Controls
 const updateMovement = setupControls(renderer, camera);
