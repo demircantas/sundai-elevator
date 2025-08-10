@@ -1,3 +1,30 @@
+
+// Unlit shading toggle (default: true)
+let useUnlit = true;
+window.useUnlit = useUnlit;
+window.toggleUnlitShading = function() {
+    useUnlit = !useUnlit;
+    window.useUnlit = useUnlit;
+    updateAllMaterials(scene, useUnlit);
+};
+
+function updateAllMaterials(obj, unlit) {
+    obj.traverse(child => {
+        if (child.isMesh) {
+            const color = child.material.color ? child.material.color.getHex() : 0xffffff;
+            child.material = unlit
+                ? new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide })
+                : new THREE.MeshPhongMaterial({ color, side: THREE.DoubleSide });
+        }
+    });
+}
+
+// Wire up the button
+document.getElementById('toggle-shading').onclick = window.toggleUnlitShading;
+// Set initial mode to unlit
+window.addEventListener('DOMContentLoaded', () => {
+    updateAllMaterials(scene, useUnlit);
+});
 import { createCamera } from './Camera.js';
 import { createRenderer } from './Renderer.js';
 import { addLighting } from './Lighting.js';

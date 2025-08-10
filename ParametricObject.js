@@ -1,6 +1,10 @@
 export function createParametricObject({ type, size = [1, 1, 1], position = [0, 0, 0], color = 0xffffff, children = [] }) {
     let geometry, material, mesh;
-    material = new THREE.MeshPhongMaterial({ color });
+    // Use global toggle if available
+    const unlit = (typeof window !== 'undefined' && window.useUnlit !== undefined) ? window.useUnlit : false;
+    material = unlit
+        ? new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide })
+        : new THREE.MeshPhongMaterial({ color, side: THREE.DoubleSide });
     switch (type) {
         case 'box':
             geometry = new THREE.BoxGeometry(...size);

@@ -1,52 +1,24 @@
-// Recipe for a stylized Grand Canyon scene using parametric objects
+// Simpler, rescaled Grand Canyon scene for debugging and elevator scale
 export function grandCanyonRecipe() {
-  // Layered canyon walls
-  const layers = [];
-  for (let i = 0; i < 8; i++) {
-    layers.push({
-      type: 'box',
-      size: [90 - i * 10, 2, 60 - i * 7],
-      position: [0, 1 + i * 2, 0],
-      color: 0xC97E4B - i * 0x111100
-    });
-  }
-  // River
-  const river = {
-    type: 'box',
-    size: [60, 0.5, 8],
-    position: [0, 1.5, 0],
-    color: 0x3399FF
-  };
-  // Rocks
-  const rocks = [];
-  for (let i = 0; i < 20; i++) {
-    rocks.push({
-      type: 'sphere',
-      size: [Math.random() * 1.5 + 0.5],
-      position: [Math.random() * 80 - 40, 2, Math.random() * 40 - 20],
-      color: 0xA0522D
-    });
-  }
-  // Plateaus
-  const plateaus = [];
-  for (let i = 0; i < 5; i++) {
-    plateaus.push({
-      type: 'box',
-      size: [8, 2, 8],
-      position: [Math.random() * 60 - 30, 10 + Math.random() * 6, Math.random() * 40 - 20],
-      color: 0xE2B07A
-    });
-  }
   return {
     type: 'plane',
-    size: [100, 100],
+    size: [30, 30],
     position: [0, 0, 0],
     color: 0xE2B07A,
     children: [
-      ...layers,
-      river,
-      ...rocks,
-      ...plateaus
+      // Canyon walls (boxes)
+      { type: 'box', size: [28, 4, 2], position: [0, 2, -14], color: 0xC97E4B },
+      { type: 'box', size: [28, 4, 2], position: [0, 2, 14], color: 0xC97E4B },
+      { type: 'box', size: [2, 4, 28], position: [-14, 2, 0], color: 0xC97E4B },
+      { type: 'box', size: [2, 4, 28], position: [14, 2, 0], color: 0xC97E4B },
+      // River
+      { type: 'box', size: [20, 0.5, 3], position: [0, 0.3, 0], color: 0x3399FF },
+      // Some rocks
+      { type: 'sphere', size: [1], position: [5, 1, 5], color: 0xA0522D },
+      { type: 'sphere', size: [0.7], position: [-6, 1, -4], color: 0xA0522D },
+      { type: 'sphere', size: [0.5], position: [8, 1, -7], color: 0xA0522D },
+      // Plateau
+      { type: 'box', size: [6, 1, 6], position: [8, 2, 8], color: 0xE2B07A }
     ]
   };
 }
