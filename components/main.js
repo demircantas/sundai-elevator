@@ -118,37 +118,53 @@ function animate() {
     let t = 0;
     if (elevatorMoving && playerInElevator) {
         // Move elevator and player up or down
+        let arrived = false;
         if (elevatorDirection === 1 && elevatorMesh.position.y < elevatorTargetY) {
             elevatorMesh.position.y += 0.1;
+            if (elevatorMesh.position.y >= elevatorTargetY) {
+                elevatorMesh.position.y = elevatorTargetY;
+                arrived = true;
+            }
             camera.position.y = elevatorMesh.position.y;
         } else if (elevatorDirection === -1 && elevatorMesh.position.y > 5) {
             elevatorMesh.position.y -= 0.1;
+            if (elevatorMesh.position.y <= 5) {
+                elevatorMesh.position.y = 5;
+                arrived = true;
+            }
             camera.position.y = elevatorMesh.position.y;
         } else {
-            // Arrived at destination
-            elevatorMoving = false;
-            playerInElevator = false;
-            if (elevatorDirection === 1 && currentScene === 'dome') {
-                loadCanyonScene();
-            } else if (elevatorDirection === -1 && currentScene === 'canyon') {
-                loadDomeScene();
-            }
+            arrived = true;
         }
         // Interpolate scenes while elevator is moving
         t = (elevatorMesh.position.y - 5) / (elevatorTargetY - 5);
         if (elevatorDirection === -1) t = 1 - t;
-        // Clamp t
         t = Math.max(0, Math.min(1, t));
-        // Remove previous interpScene
         if (interpScene) scene.remove(interpScene);
         interpScene = createInterpolatedScene(domeRecipe, canyonRecipe, t);
         scene.add(interpScene);
-        // Hide dome/canyon base scenes during interpolation
         if (dome) scene.remove(dome);
         if (canyon) scene.remove(canyon);
+        if (arrived) {
+            // Only update state, do not reload scene or teleport
+            elevatorMoving = false;
+            playerInElevator = false;
+            // Set currentScene based on direction
+            if (elevatorDirection === 1) {
+                currentScene = 'canyon';
+            } else {
+                currentScene = 'dome';
+            }
+            // Remove interpScene and show new base scene
+            if (interpScene) {
+                scene.remove(interpScene);
+                interpScene = null;
+            }
+            if (currentScene === 'dome' && dome && !scene.children.includes(dome)) scene.add(dome);
+            if (currentScene === 'canyon' && canyon && !scene.children.includes(canyon)) scene.add(canyon);
+        }
     } else {
         updateMovement();
-        // Ensure only the current scene is visible
         if (interpScene) {
             scene.remove(interpScene);
             interpScene = null;
