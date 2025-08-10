@@ -2,8 +2,11 @@ import { createCamera } from './Camera.js';
 import { createRenderer } from './Renderer.js';
 import { addLighting } from './Lighting.js';
 import { setupControls } from './Controls.js';
-import { createGround, createCube, createSphere, createCylinder } from '../SceneObjects.js';
-import { createSceneFromJSON } from '../ParametricObject.js';
+import { createSceneFromRecipe } from '../ParametricObject.js';
+
+// Import recipes
+import { grandCanyonRecipe } from '../recipes/grand_canyon_recipe.js';
+import { greatDomeMITRecipe } from '../recipes/great_dome_mit_recipe.js';
 
 // Scene
 const scene = new THREE.Scene();
@@ -24,13 +27,12 @@ addLighting(scene);
 // scene.add(createSphere());
 // scene.add(createCylinder());
 
-// Load cartoon scene from JSON (Grand Canyon example)
-fetch('../grand_canyon_scene.json')
-    .then(response => response.json())
-    .then(data => {
-        const canyon = createSceneFromJSON(data);
-        scene.add(canyon);
-    });
+// Load scene from recipe (choose one)
+const canyon = createSceneFromRecipe(greatDomeMITRecipe());
+scene.add(canyon);
+// To use the MIT Dome scene, comment above and uncomment below:
+// const dome = createSceneFromRecipe(greatDomeMITRecipe());
+// scene.add(dome);
 
 // Controls
 const updateMovement = setupControls(renderer, camera);

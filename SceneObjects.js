@@ -1,31 +1,16 @@
-export function createGround() {
-    const groundGeometry = new THREE.PlaneGeometry(100, 100);
-    const groundMaterial = new THREE.MeshPhongMaterial({color: 0x888888});
-    const ground = new THREE.Mesh(groundGeometry, groundMaterial);
-    ground.rotation.x = -Math.PI / 2;
-    return ground;
+// SceneObjects.js is now a placeholder for future helpers or extensions.
+
+export function applyMaterial(mesh, m) {
+  if (!mesh) return;
+  const kind = m.kind || 'standard';
+  const color = m.color || '#cccccc';
+  let mat;
+  switch (kind) {
+    case 'standard': mat = new THREE.MeshStandardMaterial({ color, metalness: m.metalness ?? 0, roughness: m.roughness ?? 1 }); break;
+    case 'phong':    mat = new THREE.MeshPhongMaterial({ color, shininess: m.shininess ?? 30 }); break;
+    case 'emissive': mat = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: m.emissiveIntensity ?? 1, metalness: 0, roughness: 1 }); break;
+    default:         mat = new THREE.MeshBasicMaterial({ color });
+  }
+  mesh.material = mat;
 }
 
-export function createCube() {
-    const cubeGeometry = new THREE.BoxGeometry(1, 1, 1);
-    const cubeMaterial = new THREE.MeshPhongMaterial({ color: 0x2196f3 });
-    const cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
-    cube.position.set(2, 0.5, 0);
-    return cube;
-}
-
-export function createSphere() {
-    const sphereGeometry = new THREE.SphereGeometry(0.5, 32, 32);
-    const sphereMaterial = new THREE.MeshPhongMaterial({ color: 0xe91e63 });
-    const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
-    sphere.position.set(-2, 0.5, 0);
-    return sphere;
-}
-
-export function createCylinder() {
-    const cylinderGeometry = new THREE.CylinderGeometry(0.5, 0.5, 1, 32);
-    const cylinderMaterial = new THREE.MeshPhongMaterial({ color: 0x4caf50 });
-    const cylinder = new THREE.Mesh(cylinderGeometry, cylinderMaterial);
-    cylinder.position.set(0, 0.5, -2);
-    return cylinder;
-}

@@ -1,4 +1,4 @@
-export function createParametricObject({ type, size = [1, 1, 1], position = [0, 0, 0], color = 0xffffff }) {
+export function createParametricObject({ type, size = [1, 1, 1], position = [0, 0, 0], color = 0xffffff, children = [] }) {
     let geometry, material, mesh;
     material = new THREE.MeshPhongMaterial({ color });
     switch (type) {
@@ -19,16 +19,13 @@ export function createParametricObject({ type, size = [1, 1, 1], position = [0, 
     }
     mesh = new THREE.Mesh(geometry, material);
     mesh.position.set(...position);
+    // Recursively add children
+    for (const child of children) {
+        mesh.add(createParametricObject(child));
+    }
     return mesh;
 }
 
-export function createSceneFromJSON(json, parent = null) {
-    const obj = createParametricObject(json);
-    if (json.children && Array.isArray(json.children)) {
-        json.children.forEach(child => {
-            const childObj = createSceneFromJSON(child, obj);
-            obj.add(childObj);
-        });
-    }
-    return obj;
+export function createSceneFromRecipe(recipe) {
+    return createParametricObject(recipe);
 }

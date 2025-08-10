@@ -8,5 +8,53 @@
 <body>
 <script src="https://cdn.jsdelivr.net/npm/three@0.153.0/build/three.min.js"></script>
 <script type="module" src="components/main.js"></script>
+<script type="module">
+  import { expandRecipe } from './src/SceneGenerator.js';
+  import domeRecipe from './scenes/great_dome_recipe.js';
+  import canyonRecipe from './scenes/grand_canyon_recipe.js';
+  // If you prefer JSON instead of JS modules for recipes, you can import with fetch + JSON.parse.
+
+  // ---- Backward-compat loader ----
+  async function loadScene(source) {
+    // source can be: { motifs: [...] }  OR  { objects: [...] } OR already-flat array
+    let data = source;
+    if (typeof source === 'string') {
+      const res = await fetch(source);
+      data = await res.json();
+    }
+
+    let flat;
+    if (Array.isArray(data)) {
+      flat = data;
+    } else if (data && Array.isArray(data.motifs)) {
+      flat = expandRecipe(data);
+    } else if (data && Array.isArray(data.objects)) {
+      flat = data.objects;
+    } else {
+      console.error('Unrecognized scene format', data);
+      return;
+    }
+
+    // Hand off to your existing code path:
+    // Expectation: you have something like SceneObjects.addObjects(flat) or similar
+    if (window.SceneObjects && typeof window.SceneObjects.loadFlatObjects === 'function') {
+      window.SceneObjects.loadFlatObjects(flat);
+    } else if (typeof loadFlatObjects === 'function') {
+      loadFlatObjects(flat);
+    } else {
+      // Fallback: if your current code expects the json file,
+      // you may need to adapt it to accept "flat" here.
+      console.warn('Please wire flat objects into your object creation path.');
+    }
+  }
+
+  // Toggle scenes
+  window.loadDome = () => loadScene(domeRecipe);
+  window.loadCanyon = () => loadScene(canyonRecipe);
+
+  // Initial load
+  loadScene(domeRecipe);
+</script>
+
 </body>
 </html>
