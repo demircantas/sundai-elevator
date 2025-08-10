@@ -1,6 +1,6 @@
 // SceneInterpolator.js
 // Interpolates between two scene recipes (arrays of objects with matching order/types)
-import { createParametricObject } from '../ParametricObject.js';
+// import { createParametricObject } from '../ParametricObject.js';
 
 function lerp(a, b, t) {
   return a + (b - a) * t;

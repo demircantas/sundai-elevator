@@ -30,7 +30,7 @@ import { createRenderer } from './Renderer.js';
 import { addLighting } from './Lighting.js';
 import { setupControls } from './Controls.js';
 import { createSceneFromRecipe } from '../ParametricObject.js';
-import { createParametricObject } from '../ParametricObject.js';
+// import { createParametricObject } from '../ParametricObject.js';
 import { elevatorRecipe } from '../recipes/elevator_recipe.js';
 import { interpolateRecipes, createInterpolatedScene } from './SceneInterpolator.js';
 
@@ -64,25 +64,68 @@ addLighting(scene);
 let currentScene = 'dome';
 let elevator, elevatorMesh, elevatorY = 0, elevatorTargetY = 20, elevatorMoving = false, elevatorDirection = 1;
 let dome, canyon, playerInElevator = false;
-let interpObjects = [];
+let interpInstanced = [];
 const domeRecipe = greatDomeMITRecipe();
 const canyonRecipe = grandCanyonRecipe();
 
 function loadDomeScene() {
     scene.clear();
-    // Create objects for interpolation and keep references
-    interpObjects = [];
-    function createInterpObjects(objA, objB, parent) {
-        const mesh = createParametricObject(objA);
-        if (parent) parent.add(mesh); else scene.add(mesh);
-        interpObjects.push({ mesh, objA, objB });
-        if (objA.children && objB.children && objA.children.length === objB.children.length) {
-            for (let i = 0; i < objA.children.length; ++i) {
-                createInterpObjects(objA.children[i], objB.children[i], mesh);
+    // Use instanced geometry scene for MIT Dome
+    // Remove previous instanced references
+    interpInstanced = [];
+    // Create instanced geometry for MIT Dome and Canyon, keep references
+    function createInterpInstanced(recipeA, recipeB) {
+        // Both recipes must have the same structure for morphing
+        // We'll batch by type: box, sphere, cylinder
+        const types = ['box', 'sphere', 'cylinder'];
+        for (const type of types) {
+            const arrA = [];
+            const arrB = [];
+            function collect(objA, objB) {
+                if (objA.type === type && objB.type === type) {
+                    arrA.push(objA);
+                    arrB.push(objB);
+                }
+                if (objA.children && objB.children && objA.children.length === objB.children.length) {
+                    for (let i = 0; i < objA.children.length; ++i) {
+                        collect(objA.children[i], objB.children[i]);
+                    }
+                }
+            }
+            collect(recipeA, recipeB);
+            if (arrA.length > 0) {
+                // Create instanced mesh
+                let geometry;
+                switch (type) {
+                    case 'box': geometry = new THREE.BoxGeometry(...(arrA[0].size || [1,1,1])); break;
+                    case 'sphere': geometry = new THREE.SphereGeometry((arrA[0].size||[1])[0], 32, 32); break;
+                    case 'cylinder': geometry = new THREE.CylinderGeometry(...(arrA[0].size||[1,1,1]), 32); break;
+                }
+                const unlit = (typeof window !== 'undefined' && window.useUnlit !== undefined) ? window.useUnlit : false;
+                const baseColor = arrA[0].color || 0xffffff;
+                const material = unlit
+                    ? new THREE.MeshBasicMaterial({ color: baseColor, side: THREE.DoubleSide })
+                    : new THREE.MeshPhongMaterial({ color: baseColor, side: THREE.DoubleSide });
+                const instanced = new THREE.InstancedMesh(geometry, material, arrA.length);
+                scene.add(instanced);
+                interpInstanced.push({ instanced, arrA, arrB });
             }
         }
+        // Add plane as a regular mesh (no morphing)
+        if (recipeA.type === 'plane' && recipeB.type === 'plane') {
+            let geometry = new THREE.PlaneGeometry(...(recipeA.size||[1,1]));
+            const unlit = (typeof window !== 'undefined' && window.useUnlit !== undefined) ? window.useUnlit : false;
+            const material = unlit
+                ? new THREE.MeshBasicMaterial({ color: recipeA.color || 0xffffff, side: THREE.DoubleSide })
+                : new THREE.MeshPhongMaterial({ color: recipeA.color || 0xffffff, side: THREE.DoubleSide });
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.position.set(...(recipeA.position||[0,0,0]));
+            mesh.rotation.set(...(recipeA.rotation||[0,0,0]));
+            mesh.scale.set(...(recipeA.scale||[1,1,1]));
+            scene.add(mesh);
+        }
     }
-    createInterpObjects(domeRecipe, canyonRecipe, null);
+    createInterpInstanced(domeRecipe, canyonRecipe);
     // Elevator
     elevator = createSceneFromRecipe(elevatorRecipe({ position: [0, 5, 10], height: 8, width: 4, depth: 4 }));
     elevatorMesh = elevator;
@@ -93,19 +136,56 @@ function loadDomeScene() {
 
 function loadCanyonScene() {
     scene.clear();
-    // Create objects for interpolation and keep references
-    interpObjects = [];
-    function createInterpObjects(objA, objB, parent) {
-        const mesh = createParametricObject(objA);
-        if (parent) parent.add(mesh); else scene.add(mesh);
-        interpObjects.push({ mesh, objA, objB });
-        if (objA.children && objB.children && objA.children.length === objB.children.length) {
-            for (let i = 0; i < objA.children.length; ++i) {
-                createInterpObjects(objA.children[i], objB.children[i], mesh);
+    // Use instanced geometry scene for Grand Canyon
+    interpInstanced = [];
+    function createInterpInstanced(recipeA, recipeB) {
+        const types = ['box', 'sphere', 'cylinder'];
+        for (const type of types) {
+            const arrA = [];
+            const arrB = [];
+            function collect(objA, objB) {
+                if (objA.type === type && objB.type === type) {
+                    arrA.push(objA);
+                    arrB.push(objB);
+                }
+                if (objA.children && objB.children && objA.children.length === objB.children.length) {
+                    for (let i = 0; i < objA.children.length; ++i) {
+                        collect(objA.children[i], objB.children[i]);
+                    }
+                }
+            }
+            collect(recipeA, recipeB);
+            if (arrA.length > 0) {
+                let geometry;
+                switch (type) {
+                    case 'box': geometry = new THREE.BoxGeometry(...(arrA[0].size || [1,1,1])); break;
+                    case 'sphere': geometry = new THREE.SphereGeometry((arrA[0].size||[1])[0], 32, 32); break;
+                    case 'cylinder': geometry = new THREE.CylinderGeometry(...(arrA[0].size||[1,1,1]), 32); break;
+                }
+                const unlit = (typeof window !== 'undefined' && window.useUnlit !== undefined) ? window.useUnlit : false;
+                const baseColor = arrA[0].color || 0xffffff;
+                const material = unlit
+                    ? new THREE.MeshBasicMaterial({ color: baseColor, side: THREE.DoubleSide })
+                    : new THREE.MeshPhongMaterial({ color: baseColor, side: THREE.DoubleSide });
+                const instanced = new THREE.InstancedMesh(geometry, material, arrA.length);
+                scene.add(instanced);
+                interpInstanced.push({ instanced, arrA, arrB });
             }
         }
+        if (recipeA.type === 'plane' && recipeB.type === 'plane') {
+            let geometry = new THREE.PlaneGeometry(...(recipeA.size||[1,1]));
+            const unlit = (typeof window !== 'undefined' && window.useUnlit !== undefined) ? window.useUnlit : false;
+            const material = unlit
+                ? new THREE.MeshBasicMaterial({ color: recipeA.color || 0xffffff, side: THREE.DoubleSide })
+                : new THREE.MeshPhongMaterial({ color: recipeA.color || 0xffffff, side: THREE.DoubleSide });
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.position.set(...(recipeA.position||[0,0,0]));
+            mesh.rotation.set(...(recipeA.rotation||[0,0,0]));
+            mesh.scale.set(...(recipeA.scale||[1,1,1]));
+            scene.add(mesh);
+        }
     }
-    createInterpObjects(domeRecipe, canyonRecipe, null);
+    createInterpInstanced(domeRecipe, canyonRecipe);
     // Elevator
     elevator = createSceneFromRecipe(elevatorRecipe({ position: [0, 5, 10], height: 8, width: 4, depth: 4, color: 0x8844ff }));
     elevatorMesh = elevator;
@@ -158,19 +238,29 @@ function animate() {
         } else {
             arrived = true;
         }
-        // Update all interpObjects in place
-        for (let i = 0; i < interpObjects.length; ++i) {
-            const { mesh, objA, objB } = interpObjects[i];
-            // Always interpolate from MIT (bottom) to Canyon (top)
-            if (objA.position && objB.position) mesh.position.set(...objA.position.map((a, j) => a + (objB.position[j] - a) * t));
-            if (objA.rotation && objB.rotation) mesh.rotation.set(...objA.rotation.map((a, j) => a + (objB.rotation[j] - a) * t));
-            if (objA.scale && objB.scale) mesh.scale.set(...objA.scale.map((a, j) => a + (objB.scale[j] - a) * t));
-            if (objA.color !== undefined && objB.color !== undefined) {
-                // Lerp color
-                const c1 = new THREE.Color(objA.color);
-                const c2 = new THREE.Color(objB.color);
-                mesh.material.color.lerpColors(c1, c2, t);
+        // Interpolate all instanced meshes
+        for (const { instanced, arrA, arrB } of interpInstanced) {
+            const color = new THREE.Color();
+            for (let i = 0; i < arrA.length; ++i) {
+                const objA = arrA[i], objB = arrB[i];
+                // Interpolate transform
+                const pos = objA.position.map((a, j) => a + (objB.position[j] - a) * t);
+                const rot = objA.rotation.map((a, j) => a + (objB.rotation[j] - a) * t);
+                const scl = objA.scale.map((a, j) => a + (objB.scale[j] - a) * t);
+                const m = new THREE.Matrix4();
+                m.compose(
+                    new THREE.Vector3(...pos),
+                    new THREE.Quaternion().setFromEuler(new THREE.Euler(...rot)),
+                    new THREE.Vector3(...scl)
+                );
+                instanced.setMatrixAt(i, m);
+                // Interpolate color
+                color.set(objA.color);
+                color.lerp(new THREE.Color(objB.color), t);
+                instanced.setColorAt(i, color);
             }
+            instanced.instanceMatrix.needsUpdate = true;
+            if (instanced.instanceColor) instanced.instanceColor.needsUpdate = true;
         }
         if (arrived) {
             elevatorMoving = false;
@@ -183,18 +273,28 @@ function animate() {
         }
     } else {
         updateMovement();
-        // When not moving, snap to correct state
-        for (let i = 0; i < interpObjects.length; ++i) {
-            const { mesh, objA, objB } = interpObjects[i];
-            let snapT = (currentScene === 'dome') ? 0 : 1;
-            if (objA.position && objB.position) mesh.position.set(...objA.position.map((a, j) => a + (objB.position[j] - a) * snapT));
-            if (objA.rotation && objB.rotation) mesh.rotation.set(...objA.rotation.map((a, j) => a + (objB.rotation[j] - a) * snapT));
-            if (objA.scale && objB.scale) mesh.scale.set(...objA.scale.map((a, j) => a + (objB.scale[j] - a) * snapT));
-            if (objA.color !== undefined && objB.color !== undefined) {
-                const c1 = new THREE.Color(objA.color);
-                const c2 = new THREE.Color(objB.color);
-                mesh.material.color.lerpColors(c1, c2, snapT);
+        // Snap to correct state
+        let snapT = (currentScene === 'dome') ? 0 : 1;
+        for (const { instanced, arrA, arrB } of interpInstanced) {
+            const color = new THREE.Color();
+            for (let i = 0; i < arrA.length; ++i) {
+                const objA = arrA[i], objB = arrB[i];
+                const pos = objA.position.map((a, j) => a + (objB.position[j] - a) * snapT);
+                const rot = objA.rotation.map((a, j) => a + (objB.rotation[j] - a) * snapT);
+                const scl = objA.scale.map((a, j) => a + (objB.scale[j] - a) * snapT);
+                const m = new THREE.Matrix4();
+                m.compose(
+                    new THREE.Vector3(...pos),
+                    new THREE.Quaternion().setFromEuler(new THREE.Euler(...rot)),
+                    new THREE.Vector3(...scl)
+                );
+                instanced.setMatrixAt(i, m);
+                color.set(objA.color);
+                color.lerp(new THREE.Color(objB.color), snapT);
+                instanced.setColorAt(i, color);
             }
+            instanced.instanceMatrix.needsUpdate = true;
+            if (instanced.instanceColor) instanced.instanceColor.needsUpdate = true;
         }
     }
     renderer.render(scene, camera);
