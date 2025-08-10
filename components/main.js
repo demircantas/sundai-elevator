@@ -30,6 +30,7 @@ import { createRenderer } from './Renderer.js';
 import { addLighting } from './Lighting.js';
 import { setupControls } from './Controls.js';
 import { createSceneFromRecipe } from '../ParametricObject.js';
+import { createParametricObject } from '../ParametricObject.js';
 import { elevatorRecipe } from '../recipes/elevator_recipe.js';
 import { interpolateRecipes, createInterpolatedScene } from './SceneInterpolator.js';
 
@@ -63,34 +64,54 @@ addLighting(scene);
 let currentScene = 'dome';
 let elevator, elevatorMesh, elevatorY = 0, elevatorTargetY = 20, elevatorMoving = false, elevatorDirection = 1;
 let dome, canyon, playerInElevator = false;
-let interpScene = null;
+let interpObjects = [];
 const domeRecipe = greatDomeMITRecipe();
 const canyonRecipe = grandCanyonRecipe();
 
 function loadDomeScene() {
     scene.clear();
-    dome = createSceneFromRecipe(domeRecipe);
-    scene.add(dome);
+    // Create objects for interpolation and keep references
+    interpObjects = [];
+    function createInterpObjects(objA, objB, parent) {
+        const mesh = createParametricObject(objA);
+        if (parent) parent.add(mesh); else scene.add(mesh);
+        interpObjects.push({ mesh, objA, objB });
+        if (objA.children && objB.children && objA.children.length === objB.children.length) {
+            for (let i = 0; i < objA.children.length; ++i) {
+                createInterpObjects(objA.children[i], objB.children[i], mesh);
+            }
+        }
+    }
+    createInterpObjects(domeRecipe, canyonRecipe, null);
+    // Elevator
     elevator = createSceneFromRecipe(elevatorRecipe({ position: [0, 5, 10], height: 8, width: 4, depth: 4 }));
     elevatorMesh = elevator;
     scene.add(elevatorMesh);
-    // Only update camera Y to elevator Y, keep X/Z
     camera.position.y = 5;
     currentScene = 'dome';
-    interpScene = null;
 }
 
 function loadCanyonScene() {
     scene.clear();
-    canyon = createSceneFromRecipe(canyonRecipe);
-    scene.add(canyon);
+    // Create objects for interpolation and keep references
+    interpObjects = [];
+    function createInterpObjects(objA, objB, parent) {
+        const mesh = createParametricObject(objA);
+        if (parent) parent.add(mesh); else scene.add(mesh);
+        interpObjects.push({ mesh, objA, objB });
+        if (objA.children && objB.children && objA.children.length === objB.children.length) {
+            for (let i = 0; i < objA.children.length; ++i) {
+                createInterpObjects(objA.children[i], objB.children[i], mesh);
+            }
+        }
+    }
+    createInterpObjects(domeRecipe, canyonRecipe, null);
+    // Elevator
     elevator = createSceneFromRecipe(elevatorRecipe({ position: [0, 5, 10], height: 8, width: 4, depth: 4, color: 0x8844ff }));
     elevatorMesh = elevator;
     scene.add(elevatorMesh);
-    // Only update camera Y to elevator Y, keep X/Z
     camera.position.y = 5;
     currentScene = 'canyon';
-    interpScene = null;
 }
 
 // Start in MIT Dome
@@ -115,7 +136,8 @@ const updateMovement = setupControls(renderer, camera);
 
 function animate() {
     requestAnimationFrame(animate);
-    let t = 0;
+    let t = (elevatorMesh.position.y - 5) / (elevatorTargetY - 5);
+    t = Math.max(0, Math.min(1, t));
     if (elevatorMoving && playerInElevator) {
         // Move elevator and player up or down
         let arrived = false;
@@ -136,41 +158,44 @@ function animate() {
         } else {
             arrived = true;
         }
-        // Interpolate scenes while elevator is moving
-        t = (elevatorMesh.position.y - 5) / (elevatorTargetY - 5);
-        if (elevatorDirection === -1) t = 1 - t;
-        t = Math.max(0, Math.min(1, t));
-        if (interpScene) scene.remove(interpScene);
-        interpScene = createInterpolatedScene(domeRecipe, canyonRecipe, t);
-        scene.add(interpScene);
-        if (dome) scene.remove(dome);
-        if (canyon) scene.remove(canyon);
+        // Update all interpObjects in place
+        for (let i = 0; i < interpObjects.length; ++i) {
+            const { mesh, objA, objB } = interpObjects[i];
+            // Always interpolate from MIT (bottom) to Canyon (top)
+            if (objA.position && objB.position) mesh.position.set(...objA.position.map((a, j) => a + (objB.position[j] - a) * t));
+            if (objA.rotation && objB.rotation) mesh.rotation.set(...objA.rotation.map((a, j) => a + (objB.rotation[j] - a) * t));
+            if (objA.scale && objB.scale) mesh.scale.set(...objA.scale.map((a, j) => a + (objB.scale[j] - a) * t));
+            if (objA.color !== undefined && objB.color !== undefined) {
+                // Lerp color
+                const c1 = new THREE.Color(objA.color);
+                const c2 = new THREE.Color(objB.color);
+                mesh.material.color.lerpColors(c1, c2, t);
+            }
+        }
         if (arrived) {
-            // Only update state, do not reload scene or teleport
             elevatorMoving = false;
             playerInElevator = false;
-            // Set currentScene based on direction
             if (elevatorDirection === 1) {
                 currentScene = 'canyon';
             } else {
                 currentScene = 'dome';
             }
-            // Remove interpScene and show new base scene
-            if (interpScene) {
-                scene.remove(interpScene);
-                interpScene = null;
-            }
-            if (currentScene === 'dome' && dome && !scene.children.includes(dome)) scene.add(dome);
-            if (currentScene === 'canyon' && canyon && !scene.children.includes(canyon)) scene.add(canyon);
         }
     } else {
         updateMovement();
-        if (interpScene) {
-            scene.remove(interpScene);
-            interpScene = null;
+        // When not moving, snap to correct state
+        for (let i = 0; i < interpObjects.length; ++i) {
+            const { mesh, objA, objB } = interpObjects[i];
+            let snapT = (currentScene === 'dome') ? 0 : 1;
+            if (objA.position && objB.position) mesh.position.set(...objA.position.map((a, j) => a + (objB.position[j] - a) * snapT));
+            if (objA.rotation && objB.rotation) mesh.rotation.set(...objA.rotation.map((a, j) => a + (objB.rotation[j] - a) * snapT));
+            if (objA.scale && objB.scale) mesh.scale.set(...objA.scale.map((a, j) => a + (objB.scale[j] - a) * snapT));
+            if (objA.color !== undefined && objB.color !== undefined) {
+                const c1 = new THREE.Color(objA.color);
+                const c2 = new THREE.Color(objB.color);
+                mesh.material.color.lerpColors(c1, c2, snapT);
+            }
         }
-        if (currentScene === 'dome' && dome && !scene.children.includes(dome)) scene.add(dome);
-        if (currentScene === 'canyon' && canyon && !scene.children.includes(canyon)) scene.add(canyon);
     }
     renderer.render(scene, camera);
 }
