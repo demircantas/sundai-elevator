@@ -1,6 +1,6 @@
 // SceneInterpolator.js
 // Interpolates between two scene recipes (arrays of objects with matching order/types)
-import { SceneFactory } from '../ParametricObject.js';
+import { createSceneFromRecipe } from '../sceneFactory.js';
 
 export class SceneInterpolator {
   static lerp(a, b, t) {
@@ -40,6 +40,6 @@ export class SceneInterpolator {
 
   static createInterpolatedScene(recipeA, recipeB, t) {
     const interpRecipe = SceneInterpolator.interpolateRecipes(recipeA, recipeB, t);
-    return SceneFactory.createFromRecipe(interpRecipe);
+    return createSceneFromRecipe(interpRecipe);
   }
 }
